@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+
+# Testing
+.pytest_cache/
+.tox/
+.coverage
+htmlcov/
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# Allure
+allure-results/
+allure-report/
+
+# Reportes
+reports/
+*.html
+
+# Selenoid
+selenoid/video/*
+!selenoid/video/.gitkeep
+selenoid/logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Entorno
+.env
+.env.local
+
+# Logs
+*.log
