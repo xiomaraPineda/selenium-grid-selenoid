@@ -1,0 +1,82 @@
+name: Tests E2E - Selenium Grid
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:  # Permite ejecutar manualmente desde la pestaña Actions
+
+jobs:
+  tests:
+    name: Pruebas en Selenium Grid
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Levantar Selenium Grid
+        run: |
+          docker compose -f docker/docker-compose-grid.yml up -d
+          echo "Esperando que el Grid esté listo..."
+
+      - name: Esperar a que el Grid acepte sesiones
+        run: |
+          for i in {1..30}; do
+            if curl -sf http://localhost:4444/status | grep -q '"ready": true'; then
+              echo "Grid listo después de ${i} intentos"
+              exit 0
+            fi
+            echo "Intento $i/30 - Grid aún no está listo"
+            sleep 2
+          done
+          echo "ERROR: Grid no quedó listo en 60s"
+          docker compose -f docker/docker-compose-grid.yml logs
+          exit 1
+
+      - name: Ejecutar suite de pruebas
+        env:
+          REMOTE_URL: http://localhost:4444/wd/hub
+          BROWSER: chrome
+        run: |
+          pytest tests/ -v -n 3 \
+            --alluredir=allure-results \
+            --html=reports/report.html --self-contained-html \
+            --tb=short
+
+      - name: Subir resultados Allure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results
+          path: allure-results/
+          retention-days: 14
+
+      - name: Subir reporte HTML
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: html-report
+          path: reports/
+          retention-days: 14
+
+      - name: Mostrar logs del Grid en caso de fallo
+        if: failure()
+        run: docker compose -f docker/docker-compose-grid.yml logs
+
+      - name: Apagar Selenium Grid
+        if: always()
+        run: docker compose -f docker/docker-compose-grid.yml down
